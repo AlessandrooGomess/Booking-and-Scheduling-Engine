@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -10,4 +5,115 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+enum ResourceType {
+  ROOM
+  EQUIPMENT
+  VEHICLE
+
+  @@map("resource_type")
+}
+
+enum BookingStatus {
+  CONFIRMED
+  HOLD
+  CANCELLED
+  EXPIRED
+
+  @@map("booking_status")
+}
+
+enum WaitlistStatus {
+  WAITING
+  OFFERED
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+
+  @@map("waitlist_status")
+}
+
+model User {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  bookings        Booking[]
+  waitlistEntries WaitlistEntry[]
+
+  @@map("users")
+}
+
+model Resource {
+  id                        String             @id @default(uuid()) @db.Uuid
+  name                      String
+  description               String?
+  type                      ResourceType
+  isActive                  Boolean            @default(true) @map("is_active")
+  minAdvanceMinutes         Int                @default(60) @map("min_advance_minutes")
+  maxAdvanceDays            Int                @default(30) @map("max_advance_days")
+  cancellationNoticeMinutes Int                @default(120) @map("cancellation_notice_minutes")
+  createdAt                 DateTime           @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt                 DateTime           @updatedAt @map("updated_at") @db.Timestamptz()
+  bookings                  Booking[]
+  maintenanceBlocks         MaintenanceBlock[]
+  waitlistEntries           WaitlistEntry[]
+
+  @@map("resources")
+}
+
+model Booking {
+  id            String                    @id @default(uuid()) @db.Uuid
+  resourceId    String                    @map("resource_id") @db.Uuid
+  userId        String                    @map("user_id") @db.Uuid
+  status        BookingStatus             @default(CONFIRMED)
+  startsAt      DateTime                  @map("starts_at") @db.Timestamptz()
+  endsAt        DateTime                  @map("ends_at") @db.Timestamptz()
+  holdExpiresAt DateTime?                 @map("hold_expires_at") @db.Timestamptz()
+  cancelledAt   DateTime?                 @map("cancelled_at") @db.Timestamptz()
+  period        Unsupported("tstzrange")?
+  createdAt     DateTime                  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt     DateTime                  @updatedAt @map("updated_at") @db.Timestamptz()
+  resource      Resource                  @relation(fields: [resourceId], references: [id], onDelete: Restrict)
+  user          User                      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  waitlistOffer WaitlistEntry?
+
+  @@index([resourceId, status])
+  @@index([status, holdExpiresAt])
+  @@map("bookings")
+}
+
+model MaintenanceBlock {
+  id         String                    @id @default(uuid()) @db.Uuid
+  resourceId String                    @map("resource_id") @db.Uuid
+  reason     String
+  startsAt   DateTime                  @map("starts_at") @db.Timestamptz()
+  endsAt     DateTime                  @map("ends_at") @db.Timestamptz()
+  period     Unsupported("tstzrange")?
+  createdAt  DateTime                  @default(now()) @map("created_at") @db.Timestamptz()
+  resource   Resource                  @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@index([resourceId])
+  @@map("maintenance_blocks")
+}
+
+model WaitlistEntry {
+  id               String         @id @default(uuid()) @db.Uuid
+  resourceId       String         @map("resource_id") @db.Uuid
+  userId           String         @map("user_id") @db.Uuid
+  desiredStartsAt  DateTime       @map("desired_starts_at") @db.Timestamptz()
+  desiredEndsAt    DateTime       @map("desired_ends_at") @db.Timestamptz()
+  status           WaitlistStatus @default(WAITING)
+  offeredBookingId String?        @unique @map("offered_booking_id") @db.Uuid
+  offeredAt        DateTime?      @map("offered_at") @db.Timestamptz()
+  expiresAt        DateTime?      @map("expires_at") @db.Timestamptz()
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz()
+  resource         Resource       @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  offeredBooking   Booking?       @relation(fields: [offeredBookingId], references: [id], onDelete: SetNull)
+
+  @@index([resourceId, status, createdAt])
+  @@map("waitlist_entries")
 }

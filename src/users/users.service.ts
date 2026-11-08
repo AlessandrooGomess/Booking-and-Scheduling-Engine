@@ -3,21 +3,36 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '../generated/prisma/client.js';
+import { Prisma, UserRole } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { CreateUserDto } from './dto/create-user.dto.js';
+
+const USER_PUBLIC_SELECT = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+  createdAt: true,
+} satisfies Prisma.UserSelect;
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateUserDto) {
+  async create(data: {
+    name: string;
+    email: string;
+    passwordHash: string;
+    role?: UserRole;
+  }) {
     try {
       return await this.prisma.user.create({
         data: {
-          name: dto.name.trim(),
-          email: dto.email.trim().toLowerCase(),
+          name: data.name.trim(),
+          email: data.email.trim().toLowerCase(),
+          passwordHash: data.passwordHash,
+          role: data.role ?? UserRole.USER,
         },
+        select: USER_PUBLIC_SELECT,
       });
     } catch (error) {
       if (
@@ -30,8 +45,15 @@ export class UsersService {
     }
   }
 
+  async findByEmailForAuth(email: string) {
+    return this.prisma.user.findUnique({
+      where: { email: email.trim().toLowerCase() },
+    });
+  }
+
   async findAll() {
     return this.prisma.user.findMany({
+      select: USER_PUBLIC_SELECT,
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -39,6 +61,7 @@ export class UsersService {
   async findOne(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
+      select: USER_PUBLIC_SELECT,
     });
 
     if (!user) {

@@ -6,6 +6,7 @@ import { AppService } from './app.service.js';
 import { UsersModule } from './users/users.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { CaslModule } from './casl/casl.module.js';
+import { ResourcesModule } from './resources/resources.module.js';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { CaslModule } from './casl/casl.module.js';
     UsersModule,
     AuthModule,
     CaslModule,
+    ResourcesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

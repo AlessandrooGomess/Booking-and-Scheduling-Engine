@@ -1,3 +1,4 @@
+import { BookingsModule } from './bookings/bookings.module.js';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { Module } from '@nestjs/common';
@@ -16,6 +17,7 @@ import { ResourcesModule } from './resources/resources.module.js';
     AuthModule,
     CaslModule,
     ResourcesModule,
+    BookingsModule 
   ],
   controllers: [AppController],
   providers: [AppService],
